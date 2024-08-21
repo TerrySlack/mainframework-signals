@@ -1,0 +1,76 @@
+{
+  "name": "@mainframework/signals",
+  "version": "0.9.0",
+  "description": "Signals library",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TerrySlack/mainframework-signals.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TerrySlack/mainframework-signals/issues"
+  },
+  "homepage": "https://github.com/TerrySlac/kmainframework-signals#readme",
+  "scripts": {
+    "husky": "husky",
+    "clean": "rimraf dist",
+    "lint": "eslint --ext 'ts,tsx' --max-warnings=0 --fix",
+    "lint-staged": "lint-staged",
+    "prebuild": "yarn husky && yarn clean",
+    "build": "yarn prebuild && yarn build:esm",
+    "build:esm": "tsc",
+    "build:cjs": "tsc --module commonjs --outDir dist/cjs",
+    "test": "jest --config jestconfig.json"
+  },
+  "peerDependencies": {
+    "react": ">=17"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "react",
+    "typescript",
+    "awesome-project"
+  ],
+  "author": "Terry Slack",
+  "license": "MIT",
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run lint-staged  && git add --all"
+    }
+  },
+  "lint-staged": {
+    "*.(ts|tsx)": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.0.0",
+    "@types/jest": "^29.5.12",
+    "@types/react": "^18.3.4",
+    "@typescript-eslint/eslint-plugin": "^8.2.0",
+    "@typescript-eslint/parser": "^8.2.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "husky": "^9.1.5",
+    "jest": "^29.7.0",
+    "jest-canvas-mock": "^2.5.2",
+    "jest-environment-jsdom": "^29.7.0",
+    "lint-staged": "^15.2.9",
+    "prettier": "^3.2.5",
+    "react": "^18.3.1",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.2.4",
+    "tslib": "^2.6.3",
+    "typescript": "^5.5.4"
+  }
+}
