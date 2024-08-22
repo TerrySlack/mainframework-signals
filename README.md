@@ -12,7 +12,7 @@ A response with the text property: Ie. XML
 
 npm install @mainframework-signals
 
-yarn add @mainframework-signals
+yarn add @mainframework/signals
 
 ## urls
 
