@@ -11,7 +11,8 @@ A response with the text property: Ie. XML
 ## Installation:
 
 npm install @mainframework-signals
-yarn @mainframework-signals
+
+yarn add @mainframework-signals
 
 ## urls
 
