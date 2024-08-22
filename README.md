@@ -22,25 +22,33 @@ yarn add @mainframework/signals
 
 ### VanillaJS
 
-import the createSignal function. Pass a value and a cacheId (string), used to prevent duplicate signals from being created
+import the createSignal function. Pass a value and a cacheId (string), used to prevent duplicate signals from being created.
+
+Use the following signal methods to get, set and destroy a signal
 
 ```JS | TS
 //Generate a unique id
- const [uuidRef] = useState<string>(() => window.crypto.randomUUID());
+ const [uuid] = window.crypto.randomUUID();
 
 //Pass an initalValue to the signal.  It can be a primitive, object, array, promise, or a function that returns a promise
-  const signal = createSignal(initialValue, uuidRef);
+  const signal = createSignal(initialValue, uuid);
 
   signal.get();  //retreive the signal value
   signal.set(...)  //update the signal value
+  signal.destroySignal(uuid) //destroy the signal
 ```
 
 ### React
 
-To use the signals, in react, add the package to your dependencies. Import the hook and use it.
-You can pass any value to it like primitives, objecgts, arrays, as well as promises or functions that return
+Signals are only created at the component level to maintain a clean and efficient reactivity model. This design choice ensures that each component is responsible for its state, leading to a predictable and optimized rendering process. Global signals are not currently supported when used with React.
+
+The key to using signals in react is the useSignal hook
+
+You can pass any value to it like primitives, objects, arrays, as well as promises or functions that return
 a promise. The library will detect the type of value passed to it and create either a Siganl or an AsyncSignal, with
 both returning a value.
+
+On a route change, the hook will destroy the signal
 
 ```JS | TS
 import { useEffect } from "react";

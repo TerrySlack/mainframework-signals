@@ -50,10 +50,16 @@ const handleNext = <T>(iterator: Iterator<T | Promise<T>, T, unknown>, value?: T
     }
   }
 };
-function createAsyncSignal<T>(
+
+export const destroySignal = (id: string) => {
+  //Remove the siganl from the store to be garbage collected
+  delete signalStore[id];
+};
+
+const createAsyncSignal = <T>(
   promiseOrFunction: Promise<T> | (() => Promise<T>),
   cacheId: string,
-): Signal<T | undefined> {
+): Signal<T | undefined> => {
   let value: T | undefined;
   let listeners: ((value: T | undefined) => void)[] = [];
   let settled = false;
@@ -100,10 +106,10 @@ function createAsyncSignal<T>(
     }
   }
 
-  function runGenerator() {
+  const runGenerator = () => {
     const iterator = generator();
     handleNext(iterator); // Start the generator
-  }
+  };
 
   runGenerator();
 
@@ -127,7 +133,7 @@ function createAsyncSignal<T>(
 
   signalStore[cacheId] = { cacheId, signal };
   return signal;
-}
+};
 
 export const createSignal = <T>(
   initialValue: T | Promise<T> | (() => Promise<T>),
