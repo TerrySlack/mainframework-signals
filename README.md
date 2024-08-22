@@ -27,7 +27,7 @@ import the createSignal function. Pass a value and a cacheId (string), used to p
 //Generate a unique id
  const [uuidRef] = useState<string>(() => window.crypto.randomUUID());
 
-//Pass an initalValue to the signal.
+//Pass an initalValue to the signal.  It can be a primitive, object, array, promise, or a function that returns a promise
   const signal = createSignal(initialValue, uuidRef);
 
   signal.get();  //retreive the signal value

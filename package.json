@@ -12,7 +12,7 @@
   "bugs": {
     "url": "https://github.com/TerrySlack/mainframework-signals/issues"
   },
-  "homepage": "https://github.com/TerrySlac/kmainframework-signals#readme",
+  "homepage": "https://github.com/TerrySlack/mainframework-signals#readme",
   "scripts": {
     "husky": "husky",
     "clean": "rimraf dist",
