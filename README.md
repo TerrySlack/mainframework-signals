@@ -1,4 +1,4 @@
-# A framework agnostic signasl package
+# A framework agnostic signals package
 
 Written in Typescript, with vanilljs and a react examples
 The signals library currently supports processing api request from the following librarys:
@@ -10,8 +10,8 @@ A response with the text property: Ie. XML
 
 ## Installation:
 
-npm install package-name
-yarn pacakge-name
+npm install @mainframework-signals
+yarn @mainframework-signals
 
 ## urls
 
