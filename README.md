@@ -2,15 +2,18 @@
 
 Written in Typescript, with vanilljs and a react examples
 The signals library currently supports processing api request from the following librarys:
+
 Fetch API Response object
+
 Axios or SuperAgent response with `data` property
-A response with a `text()` method (like some other libraries)
+
+A response with a `text()` method
+
 A response with a `body` property
-A response with the text property: Ie. XML
 
 ## Installation:
 
-npm install @mainframework-signals
+npm install @mainframework/signals
 
 yarn add @mainframework/signals
 
@@ -27,6 +30,8 @@ import the createSignal function. Pass a value and a cacheId (string), used to p
 Use the following signal methods to get, set and destroy a signal
 
 ```JS | TS
+import { createSignal, destroySignal } from "@mainframework/signals";
+
 //Generate a unique id
  const [uuid] = window.crypto.randomUUID();
 
@@ -35,7 +40,7 @@ Use the following signal methods to get, set and destroy a signal
 
   signal.get();  //retreive the signal value
   signal.set(...)  //update the signal value
-  signal.destroySignal(uuid) //destroy the signal
+  destroySignal(uuid) //destroy the signal
 ```
 
 ### React
@@ -48,7 +53,7 @@ You can pass any value to it like primitives, objects, arrays, as well as promis
 a promise. The library will detect the type of value passed to it and create either a Siganl or an AsyncSignal, with
 both returning a value.
 
-On a route change, the hook will destroy the signal
+On a route change, the hook will destroy any signals created
 
 ```JS | TS
 import { useEffect } from "react";
