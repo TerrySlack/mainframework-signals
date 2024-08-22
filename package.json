@@ -33,9 +33,8 @@
     "README.md"
   ],
   "keywords": [
-    "react",
     "typescript",
-    "awesome-project"
+    "signals"
   ],
   "author": "Terry Slack",
   "license": "MIT",

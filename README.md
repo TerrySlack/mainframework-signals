@@ -1,4 +1,12 @@
-# create an npm package
+# A framework agnostic signasl package
+
+Written in Typescript, with vanilljs and a react examples
+The signals library currently supports processing api request from the following librarys:
+Fetch API Response object
+Axios or SuperAgent response with `data` property
+A response with a `text()` method (like some other libraries)
+A response with a `body` property
+A response with the text property: Ie. XML
 
 ## Installation:
 
@@ -6,89 +14,86 @@ npm install package-name
 yarn pacakge-name
 
 ## urls
-[npm-url]: https://www.npmjs.com/package/@mainframework/api-reqpuest-provider-worker-hook
 
-
+[npm-url]: https://github.com/TerrySlack/mainframework-signals
 
 ## Usage :
 
-## App.tsx
+### VanillaJS
 
-Wrap your application with the ApiWorkerProvider
+import the createSignal function. Pass a value and a cacheId (string), used to prevent duplicate signals from being created
 
 ```JS | TS
-import {App} from "./App";
-import { ApiWorkerProvider } from "@mainframework/api-reqpuest-provider-worker-hook";
+//Generate a unique id
+ const [uuidRef] = useState<string>(() => window.crypto.randomUUID());
 
-export const App = () => (
-  <ApiWorkerProvider>
-    <App />
-  </ApiWorkerProvider>
-);
+//Pass an initalValue to the signal.
+  const signal = createSignal(initialValue, uuidRef);
+
+  signal.get();  //retreive the signal value
+  signal.set(...)  //update the signal value
 ```
 
-## making a request
+### React
 
-In a component, where you need to make a request, use the useApiWorker hook for each request.
-You can use multiple instances of the hook, and make: get, post, patch and delete reqeusts
+To use the signals, in react, add the package to your dependencies. Import the hook and use it.
+You can pass any value to it like primitives, objecgts, arrays, as well as promises or functions that return
+a promise. The library will detect the type of value passed to it and create either a Siganl or an AsyncSignal, with
+both returning a value.
 
 ```JS | TS
 import { useEffect } from "react";
-import { useApiWorker } from "@mainframework/api-reqpuest-provider-worker-hook";
+import { useSignal } from "@mainframework/signals";
 
 export const App = () => (
- const [todos, todosRequest] = useApiWorker({
-    type: "Get",
-    url: "https://jsonplaceholder.typicode.com/todos/1",
-    "x-api-key":
-      "live_YedloihKi9ObVaF7LovnmMzpe6PYkvT6NpZhRupWl0Z6VDi9WWTpHk6zqlsaqi7z",
-  });
+  //Signal holding a number
+  const [numberSignal, setNumberSignal] = useSignal(0);
 
-  const [cats, catRequest] = useApiWorker({
-    type: "Get",
-    url: "https://api.thecatapi.com/v1/images/search?limit=10",
-  });
+  //Signal passing a function that returns a promise from a fetch request
+  const [asyncSignal, setAsyncSignal] = useSignal(() =>
+    fetch("https://jsonplaceholder.typicode.com/posts/1")
+  );
 
-  const [posts, postsRequest] = useApiWorker({
-    type: "Post",
-    url: "https://jsonplaceholder.typicode.com/posts",
-    payload:{
-      title: 'foo',
-      body: 'bar',
-      userId: 1,
-    },headers: {
-        "Content-type": "application/json; charset=UTF-8"
-    },
-  });
+  //Signal passing a promise using axios
+  const [axiosSignal] = useSignal(
+    axios.get("https://jsonplaceholder.typicode.com/posts/2")
+  );
+
+  //Signal passing a promise
+  const [numberFromPromiseSignal] = useSignal(
+    new Promise((resolve) => {
+      resolve(777);
+    })
+  );
 
   useEffect(() => {
-    catRequest();
-    todosRequest();
-    postsRequest();
+    //update the Signal or update it in a click event
+    setSignal(2);
   }, []);
 
+  //Increment a signal
+  const onIncrementClick = (e: MouseEvent<HTMLElement>) => {
+    e.preventDefault();
+    setSignal(signal + 1);
+  };
+
   return (
-    <div>
-      {todos && (
-        <div>
-          <span>Todos</span>
-          <div>{JSON.stringify(todos)}</div>
-        </div>
-      )}
+    <>
+      <div>
+        <div>Here's a number signal Value: {numberSignal}</div>
+        <hr />
+        <button onClick={onIncrementClick}>Increment the signal</button>
+      </div>
       <hr />
-      {cats && (
-        <div>
-          <span>Cats</span>
-          <div>{JSON.stringify(cats)}</div>
-        </div>
-      )} <hr />
-      {posts && (
-        <div>
-          <span>Posts</span>
-          <div>{JSON.stringify(posts)}</div>
-        </div>
-      )}
-    </div>
+      <div>Here's a number from a promise signal: {numberFromPromiseSignal}</div>
+      <hr />
+      <div>Heres the data from the fetch request</div>
+      {asyncSignal && <div>{JSON.stringify(asyncSignal)}</div>}
+
+      <hr />
+      <div>Here's the data from an axiosSignal</div>
+      {axiosSignal && <div>{JSON.stringify(axiosSignal)}</div>}
+    </>
   );
 );
 ```
