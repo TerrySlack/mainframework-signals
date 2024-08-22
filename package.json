@@ -1,6 +1,6 @@
 {
   "name": "@mainframework/signals",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "Signals library",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -12,7 +12,7 @@
   "bugs": {
     "url": "https://github.com/TerrySlack/mainframework-signals/issues"
   },
-  "homepage": "https://github.com/TerrySlac/kmainframework-signals#readme",
+  "homepage": "https://github.com/TerrySlack/mainframework-signals#readme",
   "scripts": {
     "husky": "husky",
     "clean": "rimraf dist",
@@ -33,9 +33,8 @@
     "README.md"
   ],
   "keywords": [
-    "react",
     "typescript",
-    "awesome-project"
+    "signals"
   ],
   "author": "Terry Slack",
   "license": "MIT",
