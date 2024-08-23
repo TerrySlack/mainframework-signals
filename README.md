@@ -23,6 +23,14 @@ yarn add @mainframework/signals
 
 ## Usage :
 
+### Note:
+
+Whether you interact with the signal directly in vanillajs or use the hook in react, when passing data to set
+the set function will handle any merging or overwriting. Especially in the react example where setState looks like
+a useStatefunction. The correct way to use it is either signal.set(newvalue) or, in React, setSignal(newValue)
+Don't use setSignal((prev)=>{...prev, ...newValue}). This won't work.
+Let the Signals library handle it for you
+
 ### VanillaJS
 
 import the createSignal function. Pass a value and a cacheId (string), used to prevent duplicate signals from being created.

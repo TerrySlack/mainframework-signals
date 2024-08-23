@@ -18,7 +18,15 @@ const createSyncSignal = <T>(initialValue: T, cacheId: string): Signal<T> => {
   const signal: Signal<T> = {
     get: () => value,
     set: (newValue: T) => {
-      value = newValue;
+      if ((Array.isArray(newValue) || typeof newValue === "object") && newValue !== null) {
+        // Handle object or array (shallow merge)
+        value = Array.isArray(newValue)
+          ? ([...(value as unknown as any[]), ...newValue] as T)
+          : ({ ...(value as Record<string, unknown>), ...newValue } as T);
+      } else {
+        // Handle primitive types (number, string, boolean, etc.)
+        value = newValue;
+      }
       listeners.forEach((listener) => listener(value));
     },
     subscribe: (callback: (value: T) => void) => {
