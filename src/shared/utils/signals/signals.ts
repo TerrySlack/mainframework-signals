@@ -1,7 +1,7 @@
 export type Signal<T> = {
   get: () => T;
-  set: (newValue: T) => void;
-  subscribe: (callback: (value: T) => void) => () => void;
+  set: (newValue: Partial<T> | T | Promise<T> | (() => Promise<T>)) => void;
+  subscribe: (callback: (value: Partial<T> | T | Promise<T> | (() => Promise<T>)) => void) => () => void;
 };
 
 export type SignalEntry<T> = {
@@ -17,7 +17,7 @@ const createSyncSignal = <T>(initialValue: T, cacheId: string): Signal<T> => {
 
   const signal: Signal<T> = {
     get: () => value,
-    set: (newValue: Partial<T> | T) => {
+    set: (newValue: Partial<T> | T | Promise<T> | (() => Promise<T>)) => {
       if ((Array.isArray(newValue) || typeof newValue === "object") && newValue !== null) {
         // Handle object or array (shallow merge)
         value = Array.isArray(newValue)
@@ -25,7 +25,7 @@ const createSyncSignal = <T>(initialValue: T, cacheId: string): Signal<T> => {
           : ({ ...(value as Record<string, unknown>), ...newValue } as T);
       } else {
         // Handle primitive types (number, string, boolean, etc.)
-        value = newValue;
+        value = newValue as T;
       }
       listeners.forEach((listener) => listener(value));
     },
@@ -123,8 +123,8 @@ const createAsyncSignal = <T>(
 
   const signal: Signal<T | undefined> = {
     get: () => value, // Return undefined if not yet resolved
-    set: (newValue: T | undefined) => {
-      value = newValue;
+    set: (newValue: T | Partial<T | undefined> | Promise<T | undefined> | (() => Promise<T | undefined>)) => {
+      value = newValue as T;
       settled = true;
       listeners.forEach((listener) => listener(value));
     },
