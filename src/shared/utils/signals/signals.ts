@@ -18,7 +18,7 @@ const createSyncSignal = <T>(initialValue: T, cacheId: string): Signal<T> => {
   const signal: Signal<T> = {
     get: () => value,
     set: (newValue: Partial<T> | T | Promise<T> | (() => Promise<T>)) => {
-      if ((Array.isArray(newValue) || typeof newValue === "object") && newValue !== null) {
+      if (newValue && (Array.isArray(newValue) || typeof newValue === "object")) {
         // Handle object or array (shallow merge)
         value = Array.isArray(newValue)
           ? ([...(value as unknown as any[]), ...newValue] as T)
