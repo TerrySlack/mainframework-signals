@@ -1,6 +1,6 @@
 {
   "name": "@mainframework/signals",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Signals library",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
