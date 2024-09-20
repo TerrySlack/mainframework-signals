@@ -155,27 +155,18 @@ const createAsyncSignal = <T>(
   //Doesn't exist, create a new signal
   const signal: Signal<T | undefined> = {
     get: () => value, // Return undefined if not yet resolved
-    set: (newValue: T | Partial<T | undefined> | Promise<T | undefined> | (() => Promise<T | undefined>)) => {
+    set: (
+      newValue:
+        | T //This is here to satisfy typescript
+        | Partial<T | undefined>
+        | Promise<T | undefined>
+        | (() => Promise<T | undefined>),
+    ) => {
       if (newValue instanceof Promise || typeof newValue === "function") {
         // Re-trigger generator for new async value
         //It will only be a promise or a function, so we can safely cast it
         runGenerator(newValue as Promise<T> | (() => Promise<T>));
-      } else {
-        // Synchronous value setting
-        if (!isEqual(value, newValue)) {
-          value = newValue as T;
-        }
-        settled = true;
-        listeners.forEach((listener) => listener(value));
       }
-      //Need to run the generator again.  But where do I pass the new promise
-      // runGenerator()
-      //Only update the value if the newValue is not hte same as the old value
-      if (!isEqual(value, newValue)) {
-        value = newValue as T;
-      }
-      settled = true;
-      listeners.forEach((listener) => listener(value));
     },
     subscribe: (callback: (value: T | undefined) => void) => {
       listeners.push(callback);
