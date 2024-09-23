@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useLocation } from "react-router-dom";
 
-import { createSignal, destroySignal } from "../utils/signals";
+import { signal, destroySignal } from "../utils/signals";
 
 export const useSignal = <T>(
   initialValue: (Partial<T> | T) | Promise<T> | (() => Promise<T>),
@@ -10,15 +10,15 @@ export const useSignal = <T>(
 ): [any, (newValue: T | Promise<T> | (() => Promise<T>)) => void] => {
   const location = useLocation();
   const [uuid] = useState<string>(() => window.crypto.randomUUID());
-  const signal = createSignal(initialValue, uuid);
-  const getSnapshot = () => signal.get();
+  const { get, set, subscribe } = signal(uuid, initialValue);
+  const getSnapshot = () => get();
 
-  const subscribe = (callback: () => void) => {
-    const unsubscribe = signal.subscribe(callback);
+  const subscribeCallback = (callback: () => void) => {
+    const unsubscribe = subscribe(callback);
     return unsubscribe;
   };
 
-  const value = useSyncExternalStore(subscribe, getSnapshot);
+  const value = useSyncExternalStore(subscribeCallback, getSnapshot);
 
   useEffect(() => {
     return () => {
@@ -27,5 +27,5 @@ export const useSignal = <T>(
     };
   }, [location]);
 
-  return [value as T, signal.set as (newValue: (Partial<T> | T) | Promise<T> | (() => Promise<T>)) => void];
+  return [value as T, set as (newValue: (Partial<T> | T) | Promise<T> | (() => Promise<T>)) => void];
 };
