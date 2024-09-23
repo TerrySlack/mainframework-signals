@@ -10,7 +10,7 @@ export const useSignal = <T>(
 ): [any, (newValue: T | Promise<T> | (() => Promise<T>)) => void] => {
   const location = useLocation();
   const [uuid] = useState<string>(() => window.crypto.randomUUID());
-  const { get, set, subscribe } = signal(initialValue, uuid);
+  const { get, set, subscribe } = signal(uuid, initialValue);
   const getSnapshot = () => get();
 
   const subscribeCallback = (callback: () => void) => {

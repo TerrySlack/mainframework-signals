@@ -188,8 +188,8 @@ const createAsyncSignal = <T>(
 //Note createAsyncSignal and createSyncSignal will return existing signals
 
 export const signal = <T>(
-  initialValue: T | Promise<T> | (() => Promise<T>),
   cacheId: string,
+  initialValue: T | Promise<T> | (() => Promise<T>),
 ): Signal<T | undefined> | Signal<T> =>
   initialValue instanceof Promise || typeof initialValue === "function"
     ? createAsyncSignal(initialValue as Promise<T> | (() => Promise<T>), cacheId)
