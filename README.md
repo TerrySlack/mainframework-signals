@@ -33,21 +33,22 @@ Let the Signals library handle it for you
 
 ### VanillaJS
 
-import the createSignal function. Pass a value and a cacheId (string), used to prevent duplicate signals from being created.
+import the signal function. Pass a value and a cacheId (string), used to prevent duplicate signals from being created.
 
 Use the following signal methods to get, set and destroy a signal
 
 ```JS | TS
-import { createSignal, destroySignal } from "@mainframework/signals";
+import { signal, destroySignal } from "@mainframework/signals";
 
 //Generate a unique id
  const [uuid] = window.crypto.randomUUID();
 
 //Pass an initalValue to the signal.  It can be a primitive, object, array, promise, or a function that returns a promise
-  const signal = createSignal(initialValue, uuid);
+  const {get, set} = signal(initialValue, uuid);
 
-  signal.get();  //retreive the signal value
-  signal.set(...)  //update the signal value
+  get();  //retreive the signal value
+  set(...)  //update the signal value
+  
   destroySignal(uuid) //destroy the signal
 ```
 

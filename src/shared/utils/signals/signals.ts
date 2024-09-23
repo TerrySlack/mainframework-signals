@@ -18,20 +18,22 @@ export const destroySignal = (id: string) => {
 
 export const signalStore: Record<string, SignalEntry<any>> = {};
 
+const getSignal = (id: string) => {
+  if (!id || (id && id.length === 0)) {
+    throw new Error("In order to create a signal, you need to pass in an id");
+  }
+
+  const signal = signalStore[id];
+  return signal;
+};
+
 const createSyncSignal = <T>(initialValue: T, cacheId: string): Signal<T> => {
+  const existingSignal = getSignal(cacheId) as SignalEntry<T> | undefined;
+  //Do an early return if the signal exists
+  if (existingSignal) return existingSignal.signal;
+
   let value = initialValue;
   let listeners: ((value: T) => void)[] = [];
-
-  /*
-    does the signal exist?
-    return it, but first
-      If so, compare the incoming value, with the current value.
-      If they are different, do a signal.set
-  */
-
-  const existingSignal = signalStore[cacheId] as SignalEntry<T>;
-
-  if (existingSignal) return existingSignal.signal;
 
   const signal: Signal<T> = {
     get: () => value,
@@ -88,6 +90,10 @@ const createAsyncSignal = <T>(
   let value: T | undefined;
   let listeners: ((value: T | undefined) => void)[] = [];
   let settled = false;
+
+  const existingSignal = getSignal(cacheId) as SignalEntry<T | undefined> | undefined;
+  //Do an early return if the signal exists
+  if (existingSignal) return existingSignal.signal;
 
   function* generator(functionOrPromise: Promise<T> | (() => Promise<T>)) {
     try {
@@ -148,10 +154,6 @@ const createAsyncSignal = <T>(
       just return it
     */
 
-  const existingSignal = signalStore[cacheId] as SignalEntry<T | undefined>;
-
-  if (existingSignal) return existingSignal.signal;
-
   //Doesn't exist, create a new signal
   const signal: Signal<T | undefined> = {
     get: () => value, // Return undefined if not yet resolved
@@ -185,7 +187,7 @@ const createAsyncSignal = <T>(
 
 //Note createAsyncSignal and createSyncSignal will return existing signals
 
-export const createSignal = <T>(
+export const signal = <T>(
   initialValue: T | Promise<T> | (() => Promise<T>),
   cacheId: string,
 ): Signal<T | undefined> | Signal<T> =>
