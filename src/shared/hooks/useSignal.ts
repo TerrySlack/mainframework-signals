@@ -5,7 +5,7 @@ import { useCustomSyncExternalStore } from "./useCustomeSynceExternalStore";
 
 import { signal, destroySignal } from "../utils/signals";
 
-export const useSignal = <T>(initialValue: (Partial<T> | T) | Promise<T> | (() => Promise<T>)) => {
+export const useSignal = <T>(initialValue: (null | undefined | Partial<T> | T) | Promise<T> | (() => Promise<T>)) => {
   const location = useLocation();
   const [uuid] = useState<string>(() => window.crypto.randomUUID());
   const { get, set, subscribe } = signal(uuid, initialValue);
@@ -26,5 +26,8 @@ export const useSignal = <T>(initialValue: (Partial<T> | T) | Promise<T> | (() =
     };
   }, [location]);
 
-  return [value as T, set as (newValue: (null | undefined | Partial<T> | T) | Promise<T> | (() => Promise<T>)) => void];
+  return {
+    value: value as T,
+    set: set as (newValue: null | undefined | T | (Partial<T> | T) | Promise<T> | (() => Promise<T>)) => void,
+  };
 };
