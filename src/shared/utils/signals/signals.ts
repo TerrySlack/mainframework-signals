@@ -1,9 +1,11 @@
 import { isEqual } from "../equalityCheck";
 
 export type Signal<T> = {
-  get: () => T;
+  get: () => T | Partial<T | undefined> | undefined | null;
   set: (newValue: Partial<T> | T | Promise<T> | (() => Promise<T>)) => void;
-  subscribe: (callback: (value: Partial<T> | T | Promise<T> | (() => Promise<T>)) => void) => () => void;
+  subscribe: (
+    callback: (value: null | undefined | Partial<T> | T | Promise<T> | (() => Promise<T>)) => void,
+  ) => () => void;
 };
 
 export type SignalEntry<T> = {
@@ -16,8 +18,10 @@ export const destroySignal = (id: string) => {
   delete signalStore[id];
 };
 
+//The signal store
 export const signalStore: Record<string, SignalEntry<any>> = {};
 
+//Retreive an existing signal
 const getSignal = (id: string) => {
   if (!id || (id && id.length === 0)) {
     throw new Error("In order to create a signal, you need to pass in an id");
@@ -27,48 +31,6 @@ const getSignal = (id: string) => {
   return signal;
 };
 
-const createSyncSignal = <T>(initialValue: T, cacheId: string): Signal<T> => {
-  const existingSignal = getSignal(cacheId) as SignalEntry<T> | undefined;
-  //Do an early return if the signal exists
-  if (existingSignal) return existingSignal.signal;
-
-  let value = initialValue;
-  let listeners: ((value: T) => void)[] = [];
-
-  const signal: Signal<T> = {
-    get: () => value,
-    set: (newValue: Partial<T> | T | Promise<T> | (() => Promise<T>)) => {
-      //This is a sync signal, for primities.  The typings are there to use the Signal type for both a sync and async signal
-      if (!isEqual(value, newValue)) {
-        if (newValue && (Array.isArray(newValue) || typeof newValue === "object")) {
-          // Handle object or array (shallow merge)
-          value = Array.isArray(newValue)
-            ? ([...(value as unknown as any[]), ...newValue] as T)
-            : ({ ...(value as Record<string, unknown>), ...newValue } as T);
-        } else {
-          // Handle primitive types (number, string, boolean, etc.)
-          value = newValue as T;
-        }
-      }
-      //Push the value out to the subscribers
-      listeners.forEach((listener) => listener(value));
-    },
-    subscribe: (callback: (value: T) => void) => {
-      listeners.push(callback);
-      return () => {
-        // Remove the callback from the listeners
-        listeners = listeners.filter((listener) => listener !== callback);
-      };
-    },
-  };
-
-  // Store the newly created signal
-  signalStore[cacheId] = { cacheId, signal };
-
-  return signal;
-};
-
-//const handleNext = (iterator: Iterator<any>, value?: any) => {
 const handleNext = <T>(iterator: Iterator<T | Promise<T>, T, unknown>, value?: T) => {
   const { value: nextValue, done } = iterator.next(value);
   if (!done) {
@@ -83,76 +45,107 @@ const handleNext = <T>(iterator: Iterator<T | Promise<T>, T, unknown>, value?: T
   }
 };
 
-const createAsyncSignal = <T>(
-  promiseOrFunction: Promise<T> | (() => Promise<T>),
+const createSignal = <T>(
+  promiseOrFunction: Promise<T> | (() => Promise<T> | null | undefined),
   cacheId: string,
 ): Signal<T | undefined> => {
-  let value: T | undefined;
-  let listeners: ((value: T | undefined) => void)[] = [];
+  let value: T | Partial<T | undefined> | undefined | null;
+  let listeners: ((value: T | Partial<T | undefined> | undefined | null) => void)[] = [];
   let settled = false;
 
   const existingSignal = getSignal(cacheId) as SignalEntry<T | undefined> | undefined;
+
   //Do an early return if the signal exists
   if (existingSignal) return existingSignal.signal;
 
-  function* generator(functionOrPromise: Promise<T> | (() => Promise<T>)) {
+  function* generator(
+    functionOrPromise:
+      | T //This is here to satisfy typescript
+      | Partial<T | undefined>
+      | Promise<T | undefined>
+      | (() => Promise<T | undefined>)
+      | undefined
+      | null,
+  ) {
     try {
       let result: T;
-      let newValue: T | undefined;
+      let newValue: T | Partial<T | undefined> | undefined | null;
+      if (functionOrPromise instanceof Promise || typeof functionOrPromise === "function") {
+        if (typeof functionOrPromise === "function") {
+          result = yield (functionOrPromise as () => Promise<T | undefined>)();
+        } else {
+          result = yield functionOrPromise;
+        }
 
-      if (typeof functionOrPromise === "function") {
-        result = yield functionOrPromise();
-      } else {
-        result = yield functionOrPromise;
-      }
+        // Check for Fetch API Response object
+        if (result && typeof (result as unknown as Response).json === "function") {
+          newValue = yield (result as unknown as Response).json();
+        }
+        // Check for Axios or SuperAgent response with `data` property
+        else if (result && (result as unknown as { data: T }).data) {
+          newValue = yield (result as unknown as { data: T }).data;
+        }
+        // Check for a response with a `text()` method (like some other libraries). Handles xml as well
+        else if (result && typeof (result as unknown as { text: () => Promise<string> }).text === "function") {
+          newValue = yield (result as unknown as { text: () => Promise<string> }).text();
+        }
+        // Check for a response with a `body` property
+        else if (result && (result as unknown as { body: T }).body) {
+          newValue = (result as unknown as { body: T }).body;
+        }
+        // Check for an object that could be a plain response or result
+        else if (result && typeof result === "object" && result !== null) {
+          newValue = result as T;
+        }
+        // Default case where result is returned directly
+        else {
+          newValue = result;
+        }
+      } else newValue = functionOrPromise as T | undefined | null; //Set the value here if it's not a promise or a method that returns a promise.
 
-      // Check for Fetch API Response object
-      if (result && typeof (result as unknown as Response).json === "function") {
-        newValue = yield (result as unknown as Response).json();
-      }
-      // Check for Axios or SuperAgent response with `data` property
-      else if (result && (result as unknown as { data: T }).data) {
-        newValue = yield (result as unknown as { data: T }).data;
-      }
-      // Check for a response with a `text()` method (like some other libraries). Handles xml as well
-      else if (result && typeof (result as unknown as { text: () => Promise<string> }).text === "function") {
-        newValue = yield (result as unknown as { text: () => Promise<string> }).text();
-      }
-      // Check for a response with a `body` property
-      else if (result && (result as unknown as { body: T }).body) {
-        newValue = (result as unknown as { body: T }).body;
-      }
-      // Check for an object that could be a plain response or result
-      else if (result && typeof result === "object" && result !== null) {
-        newValue = result as T;
-      }
-      // Default case where result is returned directly
-      else {
-        newValue = result;
-      }
-
+      //Update the value if the newValue isn't the same
       if (!isEqual(value, newValue)) {
         value = newValue;
       }
 
       settled = true;
-      listeners.forEach((listener) => listener(value));
+
+      //Pass to the new value to any subscribers
+      listeners.forEach((listener) => {
+        listener(value);
+      });
     } catch (error) {
+      //TODO:  Look at adding error handling here.
+      //throw new Error("In order to create a signal, you need to pass in an id");
       console.error("Error in async signal:", error);
     }
   }
 
-  const runGenerator = (generatorPromiseOrFunction: Promise<T> | (() => Promise<T>)) => {
+  const runGenerator = (
+    generatorPromiseOrFunction:
+      | T //This is here to satisfy typescript
+      | null
+      | undefined
+      | Partial<T | undefined>
+      | Promise<T | undefined>
+      | (() => Promise<T | undefined>),
+  ) => {
     const iterator = generator(generatorPromiseOrFunction);
     handleNext(iterator); // Start the generator
   };
 
-  runGenerator(promiseOrFunction);
+  //If it's a promise or function, then run the code.  Otherwise, go straigh to the signal and return it.
+  if (promiseOrFunction) {
+    runGenerator(promiseOrFunction as Promise<T> | (() => Promise<T>));
+  }
 
-  /*
-      does the signal exist?
-      just return it
-    */
+  //promiseOrFunction is null or undefined.
+  else
+    value = promiseOrFunction as
+      | T //This is here to satisfy typescript
+      | Partial<T | undefined>
+      | undefined
+      | null;
 
   //Doesn't exist, create a new signal
   const signal: Signal<T | undefined> = {
@@ -160,17 +153,15 @@ const createAsyncSignal = <T>(
     set: (
       newValue:
         | T //This is here to satisfy typescript
+        | null
+        | undefined
         | Partial<T | undefined>
         | Promise<T | undefined>
         | (() => Promise<T | undefined>),
     ) => {
-      if (newValue instanceof Promise || typeof newValue === "function") {
-        // Re-trigger generator for new async value
-        //It will only be a promise or a function, so we can safely cast it
-        runGenerator(newValue as Promise<T> | (() => Promise<T>));
-      }
+      runGenerator(newValue);
     },
-    subscribe: (callback: (value: T | undefined) => void) => {
+    subscribe: (callback: (value: T | Partial<T | undefined> | undefined | null) => void) => {
       listeners.push(callback);
       if (settled) {
         callback(value);
@@ -185,12 +176,8 @@ const createAsyncSignal = <T>(
   return signal;
 };
 
-//Note createAsyncSignal and createSyncSignal will return existing signals
-
+//Note createSignalwill return existing signals
 export const signal = <T>(
   cacheId: string,
   initialValue?: T | Promise<T> | (() => Promise<T>),
-): Signal<T | undefined> | Signal<T> =>
-  initialValue instanceof Promise || typeof initialValue === "function"
-    ? createAsyncSignal(initialValue as Promise<T> | (() => Promise<T>), cacheId)
-    : createSyncSignal<T>(initialValue as T, cacheId);
+): Signal<T | undefined> | Signal<T> => createSignal(initialValue as Promise<T> | (() => Promise<T>), cacheId);
