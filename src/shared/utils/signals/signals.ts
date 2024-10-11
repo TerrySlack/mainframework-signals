@@ -116,8 +116,7 @@ const createSignal = <T>(
       });
     } catch (error) {
       //TODO:  Look at adding error handling here.
-      //throw new Error("In order to create a signal, you need to pass in an id");
-      console.error("Error in async signal:", error);
+      throw new Error(`Error in async signal, ${error}`);
     }
   }
 

@@ -1,13 +1,11 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+
+import { useCustomSyncExternalStore } from "./useCustomeSynceExternalStore";
 
 import { signal, destroySignal } from "../utils/signals";
 
-export const useSignal = <T>(
-  initialValue: (Partial<T> | T) | Promise<T> | (() => Promise<T>),
-  //using the type 'any' here, because TS suddenly started complaining when this hook is used that it can't infer the type being returend.
-  //Should be T instead, but it's not working.
-): [any, (newValue: T | Promise<T> | (() => Promise<T>)) => void] => {
+export const useSignal = <T>(initialValue: (Partial<T> | T) | Promise<T> | (() => Promise<T>)) => {
   const location = useLocation();
   const [uuid] = useState<string>(() => window.crypto.randomUUID());
   const { get, set, subscribe } = signal(uuid, initialValue);
@@ -18,7 +16,8 @@ export const useSignal = <T>(
     return unsubscribe;
   };
 
-  const value = useSyncExternalStore(subscribeCallback, getSnapshot);
+  //This is for client side rendering only.
+  const value = useCustomSyncExternalStore(subscribeCallback, getSnapshot);
 
   useEffect(() => {
     return () => {
@@ -27,5 +26,5 @@ export const useSignal = <T>(
     };
   }, [location]);
 
-  return [value as T, set as (newValue: (Partial<T> | T) | Promise<T> | (() => Promise<T>)) => void];
+  return [value as T, set as (newValue: (null | undefined | Partial<T> | T) | Promise<T> | (() => Promise<T>)) => void];
 };
