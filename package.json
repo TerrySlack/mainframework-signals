@@ -23,9 +23,12 @@
     "build:esm": "tsc",
     "build:cjs": "tsc --module commonjs --outDir dist/cjs",
     "test": "jest --config jestconfig.json",
-    "release:patch": "yarn build && npm version patch && npm publish",
-    "release:minor": "yarn build &&npm version minor && npm publish",
-    "release:major": "yarn build &&npm version major && npm publish"
+    "release:patcho": "yarn build && npm version patch && npm publish",
+    "release:minoro": "yarn build &&npm version minor && npm publish",
+    "release:majoro": "yarn build &&npm version major && npm publish",
+    "release:patch": "git add -A && git commit -m \"updating packages\" && yarn build && npm version patch && npm publish",
+    "release:minor": "git add -A && git commit -m \"updating packages\" && yarn build && npm version minor && npm publish",
+    "release:major": "git add -A && git commit -m \"updating packages\" && yarn build && npm version major && npm publish"
   },
   "peerDependencies": {
     "react": ">=17"
