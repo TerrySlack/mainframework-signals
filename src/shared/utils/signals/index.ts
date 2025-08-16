@@ -1,1 +1,10 @@
-export { signal, destroySignal, type SignalEntry, type Signal } from "./signals";
+export {
+  signal,
+  destroySignal,
+  cleanupOldRoutes,
+  findRoute,
+  clearListeners,
+  signalStore,
+  type SignalEntry,
+  type Signal,
+} from "./signals";

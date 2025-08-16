@@ -1,33 +1,25 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
-
+import { useCallback, useRef } from "react";
 import { useCustomSyncExternalStore } from "./useCustomeSynceExternalStore";
+import { signal } from "../utils/signals";
 
-import { signal, destroySignal } from "../utils/signals";
+export const useSignal = <T>(initialValue: null | undefined | Partial<T> | T | Promise<T> | (() => Promise<T>)) => {
+  const uuidRef = useRef<string>("");
 
-export const useSignal = <T>(initialValue: (null | undefined | Partial<T> | T) | Promise<T> | (() => Promise<T>)) => {
-  const location = useLocation();
-  const [uuid] = useState<string>(() => window.crypto.randomUUID());
-  const { get, set, subscribe } = signal(uuid, initialValue);
-  const getSnapshot = () => get();
+  //Make this ssr safe and only initialize once
+  if (uuidRef.current.length === 0) {
+    uuidRef.current = typeof window !== "undefined" && "crypto" in window ? crypto.randomUUID() : uuidRef.current;
+  }
 
-  const subscribeCallback = (callback: () => void) => {
-    const unsubscribe = subscribe(callback);
-    return unsubscribe;
-  };
+  const { get, set, subscribe } = signal(uuidRef.current, initialValue);
 
-  //This is for client side rendering only.
+  // If get/subscribe are stable, we can skip useCallback here.
+  const getSnapshot = useCallback(get, [get]);
+  const subscribeCallback = useCallback(subscribe, [subscribe]);
+
   const value = useCustomSyncExternalStore(subscribeCallback, getSnapshot);
-
-  useEffect(() => {
-    return () => {
-      //Destroy the signal, if the route changes
-      destroySignal(uuid);
-    };
-  }, [location]);
 
   return {
     value: value as T,
-    set: set as (newValue: null | undefined | T | (Partial<T> | T) | Promise<T> | (() => Promise<T>)) => void,
+    set, // should already be correctly typed from signal()
   };
 };

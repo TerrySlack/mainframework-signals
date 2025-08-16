@@ -1,182 +1,281 @@
-import { isEqual } from "../equalityCheck";
-
 export type Signal<T> = {
-  get: () => T | Partial<T | undefined> | undefined | null;
-  set: (newValue: Partial<T> | T | Promise<T> | (() => Promise<T>)) => void;
-  subscribe: (
-    callback: (value: null | undefined | Partial<T> | T | Promise<T> | (() => Promise<T>)) => void,
-  ) => () => void;
+  get: () => T | undefined;
+  //newValue: T | Promise<T> | (() => T | Promise<T>)) => void
+  set: (newValue: T | Promise<T> | (() => Promise<T>)) => void;
+  subscribe: (callback: (value: T | undefined) => void) => () => void;
+  error: { message: string; httpCode?: number } | null;
 };
 
 export type SignalEntry<T> = {
   cacheId: string;
+  route: string;
+  global: boolean;
   signal: Signal<T>;
+  listeners: Set<(value: T | undefined) => void>;
 };
 
-export const destroySignal = (id: string) => {
-  //Remove the siganl from the store to be garbage collected
-  delete signalStore[id];
-};
+const isBrowser = typeof window !== "undefined";
 
-//The signal store
-export const signalStore: Record<string, SignalEntry<any>> = {};
+// Combined tracking - no need for separate signalIdToRoute map
+export const signalStore = new Map<string, Map<string, SignalEntry<any>>>();
 
-//Retreive an existing signal
-const getSignal = (id: string) => {
-  if (!id || (id && id.length === 0)) {
-    throw new Error("In order to create a signal, you need to pass in an id");
+// Batch cleanup queue with debouncing
+let cleanupQueued = false;
+const pendingCleanupRoutes = new Set<string>();
+
+// Tuning parameters for performance optimization
+const CLEANUP_CHUNK_SIZE = 50; // Process signals in chunks to avoid blocking
+const THROTTLE_THRESHOLD = 5; // Routes before applying delay
+const THROTTLE_DELAY = 100; // ms delay for frequent cleanups
+
+const getCurrentRoute = (route?: string | number): string => {
+  if (route !== undefined && route !== "") {
+    return String(route);
   }
-
-  const signal = signalStore[id];
-  return signal;
+  if (!isBrowser) {
+    return "ssr";
+  }
+  return `${window.location.pathname}${window.location.search}`;
 };
 
-const handleNext = <T>(iterator: Iterator<T | Promise<T>, T, unknown>, value?: T) => {
-  const { value: nextValue, done } = iterator.next(value);
-  if (!done) {
-    if (nextValue instanceof Promise) {
-      nextValue.then(
-        (resolvedValue) => handleNext(iterator, resolvedValue),
-        (error) => iterator.throw && iterator.throw(error),
-      );
-    } else {
-      handleNext(iterator, nextValue);
+export const findRoute = (id: string): string | undefined => {
+  for (const [route, signals] of signalStore) {
+    if (signals.has(id)) return route;
+  }
+  return undefined;
+};
+
+export const clearListeners = (id: string): void => {
+  const route = findRoute(id);
+  if (!route) return;
+
+  const routeSignals = signalStore.get(route);
+  const signalEntry = routeSignals?.get(id);
+  if (signalEntry) {
+    signalEntry.listeners.clear();
+  }
+};
+
+export const destroySignal = (id: string): void => {
+  const route = findRoute(id);
+  if (!route) return;
+
+  const routeSignals = signalStore.get(route);
+  if (routeSignals?.has(id)) {
+    const signalEntry = routeSignals.get(id)!;
+    signalEntry.listeners.clear();
+    routeSignals.delete(id);
+
+    // Clean up empty route
+    if (routeSignals.size === 0) {
+      signalStore.delete(route);
     }
   }
+};
+
+// Optimized cleanup with batching, debouncing, and chunking
+const executeCleanup = async (): Promise<void> => {
+  const routesToProcess = new Set(pendingCleanupRoutes);
+  pendingCleanupRoutes.clear();
+  cleanupQueued = false;
+
+  const allSignalsToDestroy: string[] = [];
+
+  // Collect all signals to destroy using while loops for micro-optimization
+  const routeIterator = signalStore.entries();
+  let routeEntry = routeIterator.next();
+
+  while (!routeEntry.done) {
+    const [route, signals] = routeEntry.value;
+
+    // Skip if this is a current route - use Set.has for faster lookup
+    if (!routesToProcess.has(route)) {
+      const signalIterator = signals.entries();
+      let signalEntry = signalIterator.next();
+
+      while (!signalEntry.done) {
+        const [id, signal] = signalEntry.value;
+        if (!signal.global) {
+          allSignalsToDestroy.push(id);
+        }
+        signalEntry = signalIterator.next();
+      }
+    }
+
+    routeEntry = routeIterator.next();
+  }
+
+  // Process signals in chunks to prevent main thread blocking
+  let i = 0;
+  while (i < allSignalsToDestroy.length) {
+    const chunk = allSignalsToDestroy.slice(i, i + CLEANUP_CHUNK_SIZE);
+
+    // Process chunk
+    let j = 0;
+    while (j < chunk.length) {
+      destroySignal(chunk[j]);
+      j++;
+    }
+
+    i += CLEANUP_CHUNK_SIZE;
+
+    // Yield to event loop between chunks, with adaptive delay for large queues
+    if (i < allSignalsToDestroy.length) {
+      const delay = allSignalsToDestroy.length > THROTTLE_THRESHOLD * 10 ? THROTTLE_DELAY : 0;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+};
+
+const scheduleCleanup = (): void => {
+  if (cleanupQueued) return;
+  cleanupQueued = true;
+
+  const runCleanup = () => executeCleanup().catch(console.error);
+
+  // Enhanced throttling: use longer delay for frequent cleanup requests
+  const delay = pendingCleanupRoutes.size > THROTTLE_THRESHOLD ? THROTTLE_DELAY : 0;
+
+  if (isBrowser && "requestIdleCallback" in window) {
+    (window as any).requestIdleCallback(runCleanup, { timeout: 1000 });
+  } else {
+    setTimeout(runCleanup, delay);
+  }
+};
+
+export const cleanupOldRoutes = (currentRoute: string): void => {
+  if (!currentRoute) return;
+  pendingCleanupRoutes.add(currentRoute);
+  scheduleCleanup();
 };
 
 const createSignal = <T>(
-  promiseOrFunction: Promise<T> | (() => Promise<T> | null | undefined),
   cacheId: string,
-): Signal<T | undefined> => {
-  let value: T | Partial<T | undefined> | undefined | null;
-  let listeners: ((value: T | Partial<T | undefined> | undefined | null) => void)[] = [];
-  let settled = false;
+  initialValue?: T | Promise<T> | (() => Promise<T>),
+  global = false,
+  route?: string | number,
+): Signal<T> => {
+  const currentRoute = getCurrentRoute(route);
 
-  const existingSignal = getSignal(cacheId) as SignalEntry<T | undefined> | undefined;
+  // Get or create route map
+  let routeSignals = signalStore.get(currentRoute);
+  if (!routeSignals) {
+    routeSignals = new Map();
+    signalStore.set(currentRoute, routeSignals);
+  }
 
-  //Do an early return if the signal exists
-  if (existingSignal) return existingSignal.signal;
+  // Return existing signal if found
+  const existing = routeSignals.get(cacheId);
+  if (existing) {
+    return existing.signal;
+  }
 
-  function* generator(
-    functionOrPromise:
-      | T //This is here to satisfy typescript
-      | Partial<T | undefined>
-      | Promise<T | undefined>
-      | (() => Promise<T | undefined>)
-      | undefined
-      | null,
-  ) {
-    try {
-      let result: T;
-      let newValue: T | Partial<T | undefined> | undefined | null;
-      if (functionOrPromise instanceof Promise || typeof functionOrPromise === "function") {
-        if (typeof functionOrPromise === "function") {
-          result = yield (functionOrPromise as () => Promise<T | undefined>)();
-        } else {
-          result = yield functionOrPromise;
-        }
+  // Schedule cleanup for new routes
+  cleanupOldRoutes(currentRoute);
 
-        // Check for Fetch API Response object
-        if (result && typeof (result as unknown as Response).json === "function") {
-          newValue = yield (result as unknown as Response).json();
-        }
-        // Check for Axios or SuperAgent response with `data` property
-        else if (result && (result as unknown as { data: T }).data) {
-          newValue = yield (result as unknown as { data: T }).data;
-        }
-        // Check for a response with a `text()` method (like some other libraries). Handles xml as well
-        else if (result && typeof (result as unknown as { text: () => Promise<string> }).text === "function") {
-          newValue = yield (result as unknown as { text: () => Promise<string> }).text();
-        }
-        // Check for a response with a `body` property
-        else if (result && (result as unknown as { body: T }).body) {
-          newValue = (result as unknown as { body: T }).body;
-        }
-        // Check for an object that could be a plain response or result
-        else if (result && typeof result === "object" && result !== null) {
-          newValue = result as T;
-        }
-        // Default case where result is returned directly
-        else {
-          newValue = result;
-        }
-      } else newValue = functionOrPromise as T | undefined | null; //Set the value here if it's not a promise or a method that returns a promise.
+  let value: T | undefined = undefined;
+  let error: { message: string; httpCode?: number } | null = null;
+  const listeners = new Set<(value: T | undefined) => void>();
 
-      //Update the value if the newValue isn't the same
-      if (!isEqual(value, newValue)) {
-        value = newValue;
+  const notifyListeners = (newValue: T | undefined): void => {
+    // Micro-optimization: use while loop for listener iteration
+    const listenerIterator = listeners.values();
+    let listenerEntry = listenerIterator.next();
+
+    while (!listenerEntry.done) {
+      const listener = listenerEntry.value;
+      try {
+        listener(newValue);
+      } catch (e) {
+        console.error("Listener error:", e);
       }
-
-      settled = true;
-
-      //Pass to the new value to any subscribers
-      listeners.forEach((listener) => {
-        listener(value);
-      });
-    } catch (error) {
-      //TODO:  Look at adding error handling here.
-      throw new Error(`Error in async signal, ${error}`);
+      listenerEntry = listenerIterator.next();
     }
-  }
-
-  const runGenerator = (
-    generatorPromiseOrFunction:
-      | T //This is here to satisfy typescript
-      | null
-      | undefined
-      | Partial<T | undefined>
-      | Promise<T | undefined>
-      | (() => Promise<T | undefined>),
-  ) => {
-    const iterator = generator(generatorPromiseOrFunction);
-    handleNext(iterator); // Start the generator
   };
 
-  //If it's a promise or function, then run the code.  Otherwise, go straigh to the signal and return it.
-  if (promiseOrFunction) {
-    runGenerator(promiseOrFunction as Promise<T> | (() => Promise<T>));
-  }
-
-  //promiseOrFunction is null or undefined.
-  else
-    value = promiseOrFunction as
-      | T //This is here to satisfy typescript
-      | Partial<T | undefined>
-      | undefined
-      | null;
-
-  //Doesn't exist, create a new signal
-  const signal: Signal<T | undefined> = {
-    get: () => value, // Return undefined if not yet resolved
-    set: (
-      newValue:
-        | T //This is here to satisfy typescript
-        | null
-        | undefined
-        | Partial<T | undefined>
-        | Promise<T | undefined>
-        | (() => Promise<T | undefined>),
-    ) => {
-      runGenerator(newValue);
-    },
-    subscribe: (callback: (value: T | Partial<T | undefined> | undefined | null) => void) => {
-      listeners.push(callback);
-      if (settled) {
-        callback(value);
+  const signal: Signal<T> = {
+    get: () => value,
+    set: (newValue) => {
+      if (newValue instanceof Promise) {
+        newValue
+          .then((resolvedValue) => {
+            value = resolvedValue;
+            error = null;
+            notifyListeners(value);
+          })
+          .catch((err) => {
+            error = { message: err.message };
+            notifyListeners(undefined);
+          });
+      } else if (typeof newValue === "function") {
+        try {
+          const result = (newValue as () => Promise<T>)();
+          if (result instanceof Promise) {
+            result
+              .then((resolvedValue) => {
+                value = resolvedValue;
+                error = null;
+                notifyListeners(value);
+              })
+              .catch((err) => {
+                error = { message: err.message };
+                notifyListeners(undefined);
+              });
+          } else {
+            value = result as T;
+            error = null;
+            notifyListeners(value);
+          }
+        } catch (err: any) {
+          error = { message: err.message };
+          notifyListeners(undefined);
+        }
+      } else {
+        value = newValue as T;
+        error = null;
+        notifyListeners(value);
       }
-      return () => {
-        listeners = listeners.filter((listener) => listener !== callback);
-      };
+    },
+    subscribe: (callback) => {
+      listeners.add(callback);
+
+      // Immediately call with current value if available
+      if (value !== undefined) {
+        try {
+          callback(value);
+        } catch (e) {
+          console.error("Subscription callback error:", e);
+        }
+      }
+
+      return () => listeners.delete(callback);
+    },
+    get error() {
+      return error;
     },
   };
 
-  signalStore[cacheId] = { cacheId, signal };
+  const entry: SignalEntry<T> = {
+    cacheId,
+    route: currentRoute,
+    global,
+    signal,
+    listeners,
+  };
+
+  routeSignals.set(cacheId, entry);
+
+  // Handle initial value
+  if (initialValue !== undefined) {
+    signal.set(initialValue);
+  }
+
   return signal;
 };
 
-//Note createSignalwill return existing signals
 export const signal = <T>(
   cacheId: string,
   initialValue?: T | Promise<T> | (() => Promise<T>),
-): Signal<T | undefined> | Signal<T> => createSignal(initialValue as Promise<T> | (() => Promise<T>), cacheId);
+  global = false,
+  route?: string | number,
+): Signal<T> => createSignal<T>(cacheId, initialValue, global, route);

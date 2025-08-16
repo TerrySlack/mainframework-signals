@@ -1,37 +1,39 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
-import { isEqual } from "../utils/equalityCheck";
-
+import { isEqual } from "@mainframework/is-deep-equal";
 type Comparator<T> = (prev: T, next: T) => boolean;
 
+const trigger = (v: number) => {
+  if (v === 9) return 0;
+  return v + 1;
+};
 export const useCustomSyncExternalStore = <T>(
   subscribe: (callback: () => void) => () => void,
   getSnapshot: () => T,
-  customComparator: Comparator<T> = isEqual, //Provide a default comparator
+  customComparator: Comparator<T | undefined> = isEqual,
 ): T => {
-  // Use useState to store the snapshot and trigger re-renders
-  const [snapshot, setSnapshot] = useState(getSnapshot);
+  const snapshotRef = useRef<T | undefined>(undefined);
 
-  // Handle store updates and decide whether to update the snapshot
+  if (snapshotRef.current === undefined) {
+    snapshotRef.current = getSnapshot();
+  }
+
+  const [, setTrigger] = useState(0);
+
   const handleStoreUpdate = useCallback(() => {
     const newSnapshot = getSnapshot();
-
-    // Use custom comparator or fallback to strict equality
-    const shouldUpdate = !customComparator(snapshot, newSnapshot);
-
-    if (shouldUpdate) {
-      setSnapshot(newSnapshot); // Update state, triggers re-render
+    if (!customComparator(snapshotRef.current, newSnapshot)) {
+      snapshotRef.current = newSnapshot;
+      setTrigger(trigger); // trigger re-render
     }
-  }, [customComparator, getSnapshot, snapshot]);
+  }, [customComparator, getSnapshot]);
 
-  // Subscribe to the store and clean up
   useEffect(() => {
     const unsubscribe = subscribe(handleStoreUpdate);
-    handleStoreUpdate(); // Check initially when subscribing
+    handleStoreUpdate(); // initial check
 
     return () => unsubscribe();
   }, [subscribe, handleStoreUpdate]);
 
-  // Return the current snapshot
-  return snapshot;
+  return snapshotRef.current;
 };
