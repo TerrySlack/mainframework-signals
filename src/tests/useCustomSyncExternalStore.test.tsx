@@ -1,7 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 
-import { useCustomSyncExternalStore } from "../shared/hooks/useCustomeSynceExternalStore";
+import { useCustomSyncExternalStore } from "../shared/hooks/useCustomSyncExternalStore";
 
 // Dummy deep comparator for testing
 const shallowEqual = (a: any, b: any) => a === b;

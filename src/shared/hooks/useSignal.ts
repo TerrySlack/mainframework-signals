@@ -1,5 +1,5 @@
-import { useCallback, useRef } from "react";
-import { useCustomSyncExternalStore } from "./useCustomeSynceExternalStore";
+import { useRef } from "react";
+import { useCustomSyncExternalStore } from "./useCustomSyncExternalStore";
 import { signal } from "../utils/signals";
 
 export const useSignal = <T>(initialValue: null | undefined | Partial<T> | T | Promise<T> | (() => Promise<T>)) => {
@@ -7,19 +7,17 @@ export const useSignal = <T>(initialValue: null | undefined | Partial<T> | T | P
 
   //Make this ssr safe and only initialize once
   if (uuidRef.current.length === 0) {
-    uuidRef.current = typeof window !== "undefined" && "crypto" in window ? crypto.randomUUID() : uuidRef.current;
+    uuidRef.current =
+      typeof window !== "undefined" && "crypto" in window
+        ? crypto.randomUUID()
+        : `sid_${Date.now()}_${Math.random().toString(36).slice(2)}`; //Add a random string
   }
 
   const { get, set, subscribe } = signal(uuidRef.current, initialValue);
-
-  // If get/subscribe are stable, we can skip useCallback here.
-  const getSnapshot = useCallback(get, [get]);
-  const subscribeCallback = useCallback(subscribe, [subscribe]);
-
-  const value = useCustomSyncExternalStore(subscribeCallback, getSnapshot);
+  const value = useCustomSyncExternalStore(subscribe, get);
 
   return {
-    value: value as T,
-    set, // should already be correctly typed from signal()
+    value,
+    set,
   };
 };

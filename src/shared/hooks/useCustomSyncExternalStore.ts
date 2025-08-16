@@ -3,10 +3,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { isEqual } from "@mainframework/is-deep-equal";
 type Comparator<T> = (prev: T, next: T) => boolean;
 
-const trigger = (v: number) => {
-  if (v === 9) return 0;
-  return v + 1;
-};
+const trigger = (v: number) => (v === 9 ? 0 : v + 1);
+
 export const useCustomSyncExternalStore = <T>(
   subscribe: (callback: () => void) => () => void,
   getSnapshot: () => T,

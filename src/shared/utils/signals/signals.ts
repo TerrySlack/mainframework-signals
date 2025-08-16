@@ -192,64 +192,67 @@ const createSignal = <T>(
       listenerEntry = listenerIterator.next();
     }
   };
-
-  const signal: Signal<T> = {
-    get: () => value,
-    set: (newValue) => {
-      if (newValue instanceof Promise) {
-        newValue
-          .then((resolvedValue) => {
-            value = resolvedValue;
-            error = null;
-            notifyListeners(value);
-          })
-          .catch((err) => {
-            error = { message: err.message };
-            notifyListeners(undefined);
-          });
-      } else if (typeof newValue === "function") {
-        try {
-          const result = (newValue as () => Promise<T>)();
-          if (result instanceof Promise) {
-            result
-              .then((resolvedValue) => {
-                value = resolvedValue;
-                error = null;
-                notifyListeners(value);
-              })
-              .catch((err) => {
-                error = { message: err.message };
-                notifyListeners(undefined);
-              });
-          } else {
-            value = result as T;
-            error = null;
-            notifyListeners(value);
-          }
-        } catch (err: any) {
+  const get = () => value;
+  const set = (newValue: T | Promise<T> | (() => Promise<T>)) => {
+    if (newValue instanceof Promise) {
+      newValue
+        .then((resolvedValue) => {
+          value = resolvedValue;
+          error = null;
+          notifyListeners(value);
+        })
+        .catch((err) => {
           error = { message: err.message };
           notifyListeners(undefined);
+        });
+    } else if (typeof newValue === "function") {
+      try {
+        const result = (newValue as () => Promise<T>)();
+        if (result instanceof Promise) {
+          result
+            .then((resolvedValue) => {
+              value = resolvedValue;
+              error = null;
+              notifyListeners(value);
+            })
+            .catch((err) => {
+              error = { message: err.message };
+              notifyListeners(undefined);
+            });
+        } else {
+          value = result as T;
+          error = null;
+          notifyListeners(value);
         }
-      } else {
-        value = newValue as T;
-        error = null;
-        notifyListeners(value);
+      } catch (err: any) {
+        error = { message: err.message };
+        notifyListeners(undefined);
       }
-    },
-    subscribe: (callback) => {
-      listeners.add(callback);
+    } else {
+      value = newValue as T;
+      error = null;
+      notifyListeners(value);
+    }
+  };
 
-      // Immediately call with current value if available
-      if (value !== undefined) {
-        try {
-          callback(value);
-        } catch (e) {
-          console.error("Subscription callback error:", e);
-        }
+  const subscribe = (callback: (value: T | undefined) => void) => {
+    listeners.add(callback);
+
+    // Immediately call with current value if available
+    if (value !== undefined) {
+      try {
+        callback(value);
+      } catch (e) {
+        console.error("Subscription callback error:", e);
       }
+    }
 
-      return () => listeners.delete(callback);
-    },
+    return () => listeners.delete(callback);
+  };
+  const signal: Signal<T> = {
+    get,
+    set,
+    subscribe,
     get error() {
       return error;
     },
