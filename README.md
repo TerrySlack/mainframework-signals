@@ -48,7 +48,7 @@ import { signal, destroySignal } from "@mainframework/signals";
 
   get();  //retreive the signal value
   set(...)  //update the signal value
-  
+
   destroySignal(uuid) //destroy the signal
 ```
 
