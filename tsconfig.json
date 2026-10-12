@@ -1,6 +1,6 @@
 {
   "include": ["src"],
-  "exclude": ["dist", "node_modules", "src/tests", "src/shared/hooks", "src/shared/utils", "src/shared/store"],
+  "exclude": ["dist", "node_modules", "src/tests"],
   "compilerOptions": {
     "target": "ESNEXT",
     "module": "ESNEXT",

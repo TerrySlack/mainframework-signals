@@ -21,7 +21,7 @@ export default [
       "pnpm-lock.yaml",
       "package-lock.json",
       "pnpm-lock.yaml",
-      "pnpm-workspace.yaml"
+      "pnpm-workspace.yaml",
     ],
   },
 

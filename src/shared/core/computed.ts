@@ -1,13 +1,20 @@
 import { isEqual } from "@mainframework/is-deep-equal";
+
+import { isBrowser } from "../utils/assert-browser";
+
 import { SignalNode, cleanupComputation, setActiveComputation, track, notify } from "./reactive";
 
 export type Computed<T> = () => T;
 
-export const computed = <T>(calculation: () => T): Computed<T> => {
+export const computed = <T>(calculation: () => T): Computed<T> | null => {
+  if (!isBrowser()) {
+    return null;
+  }
+
   let value: T;
 
   const computation = {
-    dependencies: new Set<SignalNode<any>>(),
+    dependencies: new Set<SignalNode<unknown>>(),
 
     execute() {
       cleanupComputation(computation);
@@ -37,6 +44,10 @@ export const computed = <T>(calculation: () => T): Computed<T> => {
   computation.execute();
 
   return () => {
+    if (!isBrowser()) {
+      return undefined as T;
+    }
+
     track(node);
     return value;
   };

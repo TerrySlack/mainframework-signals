@@ -1,9 +1,19 @@
 // signal.ts
 
-import { isEqual } from "@mainframework/is-deep-equal";
-import { notify, SignalNode, track } from "./reactive";
-import { resource } from "./resource";
-import { getRoute, signalStore } from "../store";
+import {
+  ensureStoreJanitor,
+  getRoute,
+  getStoredSignal,
+  globalSignalStore,
+  routeSignalStore,
+  runStoreCleanup,
+  storeSignal,
+} from "../store";
+import { isBrowser } from "../utils/assert-browser";
+
+import { getOrCreateSyncSignal } from "./get-or-create-sync-signal";
+import { stopResourceInterval } from "./resource-timers";
+import { resource, type Resource } from "./resource";
 
 export type Signal<T> = {
   (): T;
@@ -13,63 +23,82 @@ export type Signal<T> = {
 export type SignalOptions = {
   global?: boolean;
   route?: string | number;
+  refetchInterval?: number;
 };
 
-export type SignalInitialValue<T> = null | undefined | Partial<T> | T | Promise<T> | (() => Promise<T>);
+export const isPromiseLike = (value: unknown): value is Promise<unknown> =>
+  value !== null &&
+  typeof value === "object" &&
+  "then" in value &&
+  typeof (value as Promise<unknown>).then === "function";
 
-export const signal = <T>(cacheId: string, initialValue: SignalInitialValue<T>, options?: SignalOptions): Signal<T> => {
-  const route = getRoute(options?.route);
+export type AsyncSource<T> = Promise<T> | (() => Promise<T>);
 
-  let routeSignals = signalStore.get(route);
+export type SignalInitialValue<T> = T | AsyncSource<T>;
 
-  if (!routeSignals) {
-    routeSignals = new Map();
-    signalStore.set(route, routeSignals);
+export type CreateSignal = {
+  <T>(cacheId: string, initialValue: AsyncSource<T>, options?: SignalOptions): Resource<T> | null;
+  <T>(cacheId: string, initialValue: SignalInitialValue<T>, options?: SignalOptions): Signal<T> | null;
+};
+
+export const createSignal = (<T>(
+  cacheId: string,
+  initialValue: SignalInitialValue<T>,
+  options?: SignalOptions,
+): Signal<T> | Resource<T> | null => {
+  if (!isBrowser()) {
+    return null;
   }
 
-  const existing = routeSignals.get(cacheId);
+  ensureStoreJanitor();
+
+  const route = getRoute(options?.route);
+  const global = options?.global ?? false;
+
+  void runStoreCleanup(route, "route");
+
+  const existing = getStoredSignal(cacheId, route, global);
 
   if (existing) {
-    return existing.signal as Signal<T>;
+    return existing as unknown as Signal<T> | Resource<T>;
   }
 
-  const createdSignal =
-    initialValue instanceof Promise || typeof initialValue === "function"
-      ? (resource(cacheId, initialValue as Promise<T> | (() => Promise<T>), options) as unknown as Signal<T>)
-      : (() => {
-          const node: SignalNode<T> = {
-            value: initialValue as T,
-            computations: new Set(),
-            equals: isEqual,
-          };
+  if (isPromiseLike(initialValue) || typeof initialValue === "function") {
+    const createdSignal = resource(cacheId, initialValue as AsyncSource<T>, options);
 
-          const getter = (() => {
-            track(node);
-            return node.value;
-          }) as Signal<T>;
+    storeSignal({
+      id: cacheId,
+      route,
+      global,
+      signal: createdSignal as unknown as Signal<unknown>,
+      created: Date.now(),
+    });
 
-          getter.set = (value) => {
-            const next = typeof value === "function" ? (value as (previous: T) => T)(node.value) : value;
+    return createdSignal;
+  }
 
-            if (node.equals(node.value, next)) {
-              return;
-            }
+  return getOrCreateSyncSignal(cacheId, initialValue, options);
+}) as CreateSignal;
 
-            node.value = next;
+export const destroySignal = (cacheId: string, options?: SignalOptions) => {
+  if (!isBrowser()) {
+    return;
+  }
 
-            notify(node);
-          };
+  const route = getRoute(options?.route);
 
-          return getter;
-        })();
+  stopResourceInterval(cacheId);
 
-  routeSignals.set(cacheId, {
-    id: cacheId,
-    route,
-    global: options?.global ?? false,
-    signal: createdSignal,
-    created: Date.now(),
-  });
+  globalSignalStore.delete(cacheId);
 
-  return createdSignal;
+  const routeMap = routeSignalStore.get(route);
+
+  routeMap?.delete(cacheId);
+
+  for (const suffix of [":value", ":loading", ":error"]) {
+    const subId = `${cacheId}${suffix}`;
+
+    globalSignalStore.delete(subId);
+    routeMap?.delete(subId);
+  }
 };

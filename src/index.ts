@@ -1,3 +1,14 @@
-export { effect, computed, signal, type SignalInitialValue } from "./shared/core";
-export { resource } from "./shared/core";
-export { useSignal } from "./shared/hooks/useSignal";
+export {
+  effect,
+  computed,
+  createSignal,
+  destroySignal,
+  resource,
+  isPromiseLike,
+  type CreateSignal,
+  type SignalInitialValue,
+  type SignalOptions,
+  type AsyncSource,
+  type Resource,
+  type Signal,
+} from "./shared/core";

@@ -1,8 +1,14 @@
+import { isBrowser } from "../utils/assert-browser";
+
 let depth = 0;
 
 const queue = new Set<() => void>();
 
 export const batch = (callback: () => void) => {
+  if (!isBrowser()) {
+    return;
+  }
+
   depth++;
 
   try {
@@ -18,6 +24,10 @@ export const batch = (callback: () => void) => {
 };
 
 export const enqueue = (job: () => void) => {
+  if (!isBrowser()) {
+    return;
+  }
+
   if (depth > 0) {
     queue.add(job);
   } else {

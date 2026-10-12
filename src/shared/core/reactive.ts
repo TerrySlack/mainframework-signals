@@ -1,3 +1,5 @@
+import { enqueue } from "./batch";
+
 export interface Computation {
   execute(): void;
   dependencies: Set<SignalNode<any>>;
@@ -46,9 +48,7 @@ const pendingComputations = new Set<Computation>();
 
 let flushing = false;
 
-export const queueComputation = (Computation: Computation) => {
-  pendingComputations.add(Computation);
-
+const scheduleFlush = () => {
   if (!flushing) {
     flushing = true;
 
@@ -60,4 +60,12 @@ export const queueComputation = (Computation: Computation) => {
       flushing = false;
     });
   }
+};
+
+export const queueComputation = (Computation: Computation) => {
+  enqueue(() => {
+    pendingComputations.add(Computation);
+
+    scheduleFlush();
+  });
 };
