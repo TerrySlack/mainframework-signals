@@ -2,3 +2,5 @@ node_modules
 .idea
 dist
 yarn-error.log
+pnpm-lock.yaml
+pnpm-workspace.yaml

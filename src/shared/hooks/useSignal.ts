@@ -1,23 +1,31 @@
-import { useRef } from "react";
-import { useCustomSyncExternalStore } from "./useCustomSyncExternalStore";
-import { signal } from "../utils/signals";
+import { useEffect, useRef, useState } from "react";
 
-export const useSignal = <T>(initialValue: null | undefined | Partial<T> | T | Promise<T> | (() => Promise<T>)) => {
-  const uuidRef = useRef<string>("");
+import { effect, signal, type SignalInitialValue } from "../core";
 
-  //Make this ssr safe and only initialize once
-  if (uuidRef.current.length === 0) {
-    uuidRef.current =
+const bump = (n: number) => (n === 9 ? 0 : n + 1);
+
+export const useSignal = <T>(initialValue: SignalInitialValue<T>) => {
+  const idRef = useRef("");
+  const [, setTrigger] = useState(0);
+
+  if (idRef.current.length === 0) {
+    idRef.current =
       typeof window !== "undefined" && "crypto" in window
         ? crypto.randomUUID()
         : `sid_${Date.now()}_${Math.random().toString(36).slice(2)}`; //Add a random string
   }
 
-  const { get, set, subscribe } = signal(uuidRef.current, initialValue);
-  const value = useCustomSyncExternalStore(subscribe, get);
+  const sig = signal(idRef.current, initialValue);
+
+  useEffect(() => {
+    return effect(() => {
+      sig();
+      setTrigger(bump);
+    });
+  }, [sig]);
 
   return {
-    value,
-    set,
+    value: sig(),
+    set: sig.set,
   };
 };

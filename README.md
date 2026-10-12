@@ -15,7 +15,7 @@ A response with a `body` property
 
 npm install @mainframework/signals
 
-yarn add @mainframework/signals
+pnpm add @mainframework/signals
 
 ## urls
 
@@ -48,7 +48,7 @@ import { signal, destroySignal } from "@mainframework/signals";
 
   get();  //retreive the signal value
   set(...)  //update the signal value
-  
+
   destroySignal(uuid) //destroy the signal
 ```
 
