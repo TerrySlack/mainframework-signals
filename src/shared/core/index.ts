@@ -1,3 +1,4 @@
+export { isPromiseLike } from "./signal";
 export { enqueue, batch } from "./batch";
 export { computed, type Computed } from "./computed";
 export { effect } from "./effect";
@@ -10,5 +11,13 @@ export {
   type Computation,
   SignalNode,
 } from "./reactive";
-export { signal, type Signal, type SignalInitialValue } from "./signal";
+export {
+  createSignal,
+  destroySignal,
+  type AsyncSource,
+  type CreateSignal,
+  type Signal,
+  type SignalInitialValue,
+  type SignalOptions,
+} from "./signal";
 export { resource, type Resource } from "./resource";

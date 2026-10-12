@@ -1,6 +1,12 @@
+import { isBrowser } from "../utils/assert-browser";
+
 import { Computation, cleanupComputation, setActiveComputation } from "./reactive";
 
-export const effect = (callback: () => void) => {
+export const effect = (callback: () => void): (() => void) | null => {
+  if (!isBrowser()) {
+    return null;
+  }
+
   const Computation: Computation = {
     dependencies: new Set(),
 
