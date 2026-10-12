@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import * as resourceTimers from "../shared/core/resource-timers";
 import { createSyncSignal } from "../shared/core/create-signal-node";
@@ -12,8 +12,13 @@ import {
   storeSignal,
 } from "../shared/store";
 import { resetAllStores } from "./helpers/store-reset";
+import { restoreAfterWindowStub } from "./setup";
 
 describe("signal-store", () => {
+  afterEach(() => {
+    restoreAfterWindowStub();
+  });
+
   beforeEach(() => {
     resetAllStores();
   });
@@ -28,6 +33,19 @@ describe("signal-store", () => {
 
     expect(getRoute()).toBe("/hello?q=1");
     expect(getCurrentRoute()).toBe("/hello?q=1");
+  });
+
+  it("getRoute and getCurrentRoute do not throw when window is undefined", async () => {
+    vi.stubGlobal("window", undefined);
+    vi.resetModules();
+
+    const mod = await import("../shared/store/signal-store");
+
+    expect(() => mod.getRoute()).not.toThrow();
+    expect(() => mod.getCurrentRoute()).not.toThrow();
+    expect(mod.getRoute()).toBe("");
+    expect(mod.getCurrentRoute()).toBe("");
+    expect(mod.getRoute("x")).toBe("x");
   });
 
   it("storeSignal and getStoredSignal for route-scoped entries", () => {

@@ -2,7 +2,7 @@ import { stopResourceIntervalsForRoute } from "../core/resource-timers";
 import type { Resource } from "../core/resource";
 import type { Signal } from "../core/signal";
 
-import { assertBrowser } from "../utils/assert-browser";
+import { isBrowser } from "../utils/assert-browser";
 
 export type StoredSignal<T> = Signal<T> | Resource<T>;
 
@@ -26,7 +26,9 @@ export const routeSignalStore = new Map<string, Map<string, SignalEntry<unknown>
 export const signalStore = routeSignalStore;
 
 export const getCurrentRoute = (): string => {
-  assertBrowser();
+  if (!isBrowser()) {
+    return "";
+  }
 
   return window.location.pathname + window.location.search;
 };
@@ -34,6 +36,10 @@ export const getCurrentRoute = (): string => {
 export const getRoute = (route?: string | number): string => {
   if (route !== undefined) {
     return String(route);
+  }
+
+  if (!isBrowser()) {
+    return "";
   }
 
   return getCurrentRoute();

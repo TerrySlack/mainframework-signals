@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 
-import { destroySignal, isPromiseLike, signal } from "../shared/core/signal";
+import { createSignal, destroySignal, isPromiseLike } from "../shared/core/signal";
 import { getStoredSignal, globalSignalStore, routeSignalStore } from "../shared/store";
 import { resetAllStores } from "./helpers/store-reset";
 import { restoreAfterWindowStub } from "./setup";
@@ -15,38 +15,38 @@ describe("signal", () => {
   });
 
   it("creates sync signal and caches by cacheId", () => {
-    const first = signal("sync-cache", 1, { route: "r1" });
-    const second = signal("sync-cache", 99, { route: "r1" });
+    const first = createSignal("sync-cache", 1, { route: "r1" });
+    const second = createSignal("sync-cache", 99, { route: "r1" });
 
     expect(first).toBe(second);
     expect(first()).toBe(1);
   });
 
   it("creates sync signal without reload for plain data", () => {
-    const sync = signal("sync-shape", 42, { route: "r-shape" });
+    const sync = createSignal("sync-shape", 42, { route: "r-shape" });
 
     expect(sync).toBeTruthy();
     expect(sync!.set).toBeDefined();
     expect("reload" in sync!).toBe(false);
 
-    const obj = signal("sync-obj", { a: 1 }, { route: "r-shape" });
+    const obj = createSignal("sync-obj", { a: 1 }, { route: "r-shape" });
     expect(obj!.set).toBeDefined();
     expect("reload" in obj!).toBe(false);
 
-    const undef = signal<number | undefined>("sync-undef", undefined, { route: "r-shape" });
+    const undef = createSignal<number | undefined>("sync-undef", undefined, { route: "r-shape" });
     expect(undef!.set).toBeDefined();
     expect("reload" in undef!).toBe(false);
   });
 
   it("treats non-thenable object as sync", () => {
-    const sync = signal("plain-obj", { foo: "bar" }, { route: "r-plain" });
+    const sync = createSignal("plain-obj", { foo: "bar" }, { route: "r-plain" });
 
     expect(sync!.set).toBeDefined();
     expect("reload" in sync!).toBe(false);
   });
 
   it("creates async resource for promise initial value", async () => {
-    const res = signal("async-cache", Promise.resolve(5), { route: "r1" });
+    const res = createSignal("async-cache", Promise.resolve(5), { route: "r1" });
 
     expect(res.loading).toBeDefined();
     expect(res.reload).toBeDefined();
@@ -59,7 +59,7 @@ describe("signal", () => {
   });
 
   it("creates async resource for function initial value without options", async () => {
-    const res = signal("async-fn", () => Promise.resolve("ok"), { route: "r-fn" });
+    const res = createSignal("async-fn", () => Promise.resolve("ok"), { route: "r-fn" });
 
     expect(res).toBeTruthy();
     expect(res!.reload).toBeDefined();
@@ -84,7 +84,7 @@ describe("signal", () => {
 
     const mod = await import("../shared/core/signal");
 
-    expect(mod.signal("ssr-cache", 1)).toBeNull();
+    expect(mod.createSignal("ssr-cache", 1)).toBeNull();
   });
 
   it("destroySignal does not throw when window is undefined", async () => {
@@ -97,7 +97,7 @@ describe("signal", () => {
   });
 
   it("cache hit keeps first async resource when initial value changes", async () => {
-    const first = signal("same-async", () => Promise.resolve("first"), { route: "r-same" });
+    const first = createSignal("same-async", () => Promise.resolve("first"), { route: "r-same" });
 
     await vi.waitFor(() => {
       expect(first!.loading()).toBe(false);
@@ -105,7 +105,7 @@ describe("signal", () => {
 
     expect(first!()).toBe("first");
 
-    const second = signal("same-async", () => Promise.resolve("second"), { route: "r-same" });
+    const second = createSignal("same-async", () => Promise.resolve("second"), { route: "r-same" });
 
     expect(second).toBe(first);
     expect(second!()).toBe("first");
@@ -113,7 +113,7 @@ describe("signal", () => {
 
   it("reload on promise source reuses same promise", async () => {
     const promise = Promise.resolve(9);
-    const res = signal("promise-reload", promise, { route: "r-pr" });
+    const res = createSignal("promise-reload", promise, { route: "r-pr" });
 
     await vi.waitFor(() => {
       expect(res!.loading()).toBe(false);
@@ -131,7 +131,7 @@ describe("signal", () => {
   });
 
   it("destroySignal removes main and resource suffix keys", () => {
-    signal("destroy-me", Promise.resolve(1), { route: "r-destroy" });
+    createSignal("destroy-me", Promise.resolve(1), { route: "r-destroy" });
 
     destroySignal("destroy-me", { route: "r-destroy" });
 
