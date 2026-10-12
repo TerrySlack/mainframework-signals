@@ -38,7 +38,7 @@ describe("useSignal hook", () => {
     let value: number | null | undefined;
     const Test = () => {
       const hook = useSignal(42);
-      value = hook.value;
+      value = hook?.();
       return null;
     };
 
@@ -50,7 +50,7 @@ describe("useSignal hook", () => {
     let value: number | null | undefined;
     const Test = () => {
       const hook = useSignal<number>(undefined);
-      value = hook.value;
+      value = hook?.();
       return null;
     };
 
@@ -64,8 +64,8 @@ describe("useSignal hook", () => {
 
     const Test = () => {
       const hook = useSignal(0);
-      value = hook.value;
-      setFn = hook.set;
+      value = hook?.();
+      setFn = hook!.set;
       return null;
     };
 
@@ -89,8 +89,8 @@ describe("useSignal hook", () => {
     };
 
     render(<Test />);
-    expect(signal1!.value).toBe(1);
-    expect(signal2!.value).toBe(2);
+    expect(signal1!()).toBe(1);
+    expect(signal2!()).toBe(2);
   });
 
   it("should update value and notify subscribers", async () => {
@@ -98,12 +98,12 @@ describe("useSignal hook", () => {
 
     const Test = () => {
       const hook = useSignal(0);
-      value = hook.value;
+      value = hook?.();
 
       useEffect(() => {
-        hook.set(10);
-        hook.set(20);
-      }, [hook.set]);
+        hook!.set(10);
+        hook!.set(20);
+      }, [hook!.set]);
 
       return null;
     };
@@ -125,11 +125,11 @@ describe("useSignal hook", () => {
     render(<Test />);
 
     await waitFor(() => {
-      expect(hookResult && "loading" in hookResult && hookResult.loading).toBe(false);
+      expect(hookResult && "loading" in hookResult && hookResult.loading()).toBe(false);
     });
 
-    expect(hookResult && "value" in hookResult && hookResult.value).toEqual({ id: 1 });
-    expect(hookResult && "error" in hookResult && hookResult.error).toBeNull();
+    expect(hookResult?.()).toEqual({ id: 1 });
+    expect(hookResult && "error" in hookResult && hookResult.error()).toBeNull();
   });
 
   it("should surface async errors from fetcher function", async () => {
@@ -143,10 +143,10 @@ describe("useSignal hook", () => {
     render(<Test />);
 
     await waitFor(() => {
-      expect(hookResult && "loading" in hookResult && hookResult.loading).toBe(false);
+      expect(hookResult && "loading" in hookResult && hookResult.loading()).toBe(false);
     });
 
-    expect(hookResult && "error" in hookResult && hookResult.error?.message).toBe("fail");
+    expect(hookResult && "error" in hookResult && hookResult.error()?.message).toBe("fail");
   });
 
   it("should share backing signal when cacheId matches", async () => {
@@ -158,9 +158,9 @@ describe("useSignal hook", () => {
     const Test = () => {
       const a = useSignal(0, { cacheId });
       const b = useSignal(0, { cacheId });
-      valueA = a.value;
-      valueB = b.value;
-      setA = a.set;
+      valueA = a?.() ?? 0;
+      valueB = b?.() ?? 0;
+      setA = a!.set;
       return null;
     };
 
@@ -227,10 +227,10 @@ describe("useSignal hook", () => {
     render(<TestB />);
 
     await waitFor(() => {
-      expect(hookResult && "loading" in hookResult && hookResult.loading).toBe(false);
+      expect(hookResult && "loading" in hookResult && hookResult.loading()).toBe(false);
     });
 
-    expect(hookResult && "value" in hookResult && hookResult.value).toBe(1);
+    expect(hookResult?.()).toBe(1);
 
     await act(async () => {
       reloadFn();
@@ -238,7 +238,7 @@ describe("useSignal hook", () => {
     });
 
     await waitFor(() => {
-      expect(hookResult && "value" in hookResult && hookResult.value).toBe(2);
+      expect(hookResult?.()).toBe(2);
     });
   });
 
@@ -264,7 +264,7 @@ describe("useSignal hook", () => {
 
     const TestB = () => {
       const hook = useSignal(99, { cacheId, route: "remount-route" });
-      remountValue = hook.value;
+      remountValue = hook?.() ?? 0;
       return null;
     };
 
@@ -329,7 +329,7 @@ describe("useSignal hook", () => {
       await Promise.resolve();
     });
 
-    expect(hookResult?.value).toBe(1);
+    expect(hookResult?.()).toBe(1);
 
     vi.doUnmock("react");
     vi.doUnmock("../shared/utils/assert-browser");
@@ -350,7 +350,7 @@ describe("useSignal hook", () => {
       await Promise.resolve();
     });
 
-    expect(hookResult?.value).toBe(5);
+    expect(hookResult?.()).toBe(5);
   });
 
   it("returns null when sync signal returns null", async () => {
@@ -360,7 +360,7 @@ describe("useSignal hook", () => {
 
       return {
         ...actual,
-        signal: () => null,
+        createSignal: () => null,
       };
     });
 
@@ -388,7 +388,7 @@ describe("useSignal hook", () => {
 
       return {
         ...actual,
-        signal: () => null,
+        createSignal: () => null,
       };
     });
 
@@ -425,10 +425,10 @@ describe("useSignal hook", () => {
     render(<Test />);
 
     await waitFor(() => {
-      expect(hookResult && "loading" in hookResult && hookResult.loading).toBe(false);
+      expect(hookResult && "loading" in hookResult && hookResult.loading()).toBe(false);
     });
 
-    expect(hookResult && "value" in hookResult && hookResult.value).toEqual({ n: 2 });
+    expect(hookResult?.()).toEqual({ n: 2 });
   });
 
   it("should store signal with global and route options", () => {

@@ -1,8 +1,6 @@
 import typescript from "@rollup/plugin-typescript";
 import { nodeResolve } from "@rollup/plugin-node-resolve";
 import terser from "@rollup/plugin-terser";
-import preserveDirectives from "rollup-plugin-preserve-directives";
-
 export default [
   {
     input: "src/index.ts",
@@ -39,11 +37,13 @@ export default [
       if (warning.code === "CIRCULAR_DEPENDENCY") {
         throw new Error(`Build failed! Circular dependency detected: ${warning.message}`);
       }
+      if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
+        throw new Error(`Build failed! Module level directive: ${warning.message}`);
+      }
       warn(warning);
     },
     plugins: [
       nodeResolve(),
-      preserveDirectives(),
       typescript({
         tsconfig: "./tsconfig.json",
         sourceMap: true,

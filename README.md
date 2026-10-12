@@ -210,7 +210,7 @@ if (isPromiseLike(maybePromise)) {
 
 ## React (optional)
 
-Import **`useSignal`** from `@mainframework/signals/react`. Use only in **client components** (`"use client"`).
+Import **`useSignal`** from `@mainframework/signals/react`. The package does **not** ship `"use client"`; put **`"use client"`** on your own components that call **`useSignal`**. On the server (`window` missing), **`useSignal`** returns **`null`** and implicit route resolution uses **`""`**.
 
 `useSignal(initialValue, options?)` delegates to **`createSignal(cacheId, …)`** in the store and returns the same **`Signal<T>`** or **`Resource<T>`** instance from the store. An internal **`effect`** subscribes to that signal so the component re-renders when values change. Store entries **persist after unmount**; remounting with the same **`cacheId`** and **`route`** reads the cached value (async resources keep the original fetcher for **`reload()`**).
 
