@@ -20,7 +20,8 @@ export default [
       "node_modules/**",
       "pnpm-lock.yaml",
       "package-lock.json",
-      "yarn.lock",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml"
     ],
   },
 

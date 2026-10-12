@@ -15,7 +15,7 @@ A response with a `body` property
 
 npm install @mainframework/signals
 
-yarn add @mainframework/signals
+pnpm add @mainframework/signals
 
 ## urls
 
