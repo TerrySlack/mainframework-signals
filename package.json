@@ -1,6 +1,6 @@
 {
   "name": "@mainframework/signals",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Signals library",
   "types": "./dist/index.d.ts",
   "type": "module",
