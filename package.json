@@ -44,7 +44,7 @@
     "lint-staged": "lint-staged",
     "prebuild": "pnpm clean",
     "build": "rollup -c && tsc --emitDeclarationOnly",
-    "tscheck": "tsc && tsc -p packages/dom-compiler/tsconfig.json",
+    "tscheck": "tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
@@ -70,11 +70,6 @@
     ]
   },
   "devDependencies": {
-    "@babel/generator": "^8.0.6",
-    "@babel/parser": "^8.0.7",
-    "@babel/preset-typescript": "^8.0.7",
-    "@babel/traverse": "^8.0.7",
-    "@babel/types": "^8.0.6",
     "@eslint/js": "^10.0.1",
     "@rollup/plugin-babel": "^7.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
