@@ -1,3 +1,4 @@
+import { runRegisteredPurges } from "./purge-registry";
 import { purgeStaleRoutes } from "./signal-store";
 
 let cleanupPromise: Promise<void> | null = null;
@@ -12,6 +13,7 @@ export const runStoreCleanup = (currentRoute: string, reason: "route" | "janitor
 
     lastRoute = currentRoute;
     purgeStaleRoutes(currentRoute);
+    runRegisteredPurges(currentRoute);
 
     return Promise.resolve();
   }
@@ -29,6 +31,7 @@ export const runStoreCleanup = (currentRoute: string, reason: "route" | "janitor
       }
 
       purgeStaleRoutes(currentRoute);
+      runRegisteredPurges(currentRoute);
     })
     .finally(() => {
       cleanupPromise = null;
