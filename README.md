@@ -45,7 +45,72 @@ For **`useSignal`** or **`useDomSignal`**, add peer dependencies in your app: **
 
 `dist/dom/core.mjs` and `dist/shared/**` ship inside the package and are loaded by relative imports between built files. They are **not** package entry points and are **not** for application imports.
 
-The in-repo DOM compiler lives at `packages/dom-compiler` (`transform(code, options)`). It is **private**, not published on npm, and there is no bundler plugin in this repo — future tooling may call `transform` only.
+## DOM compile-wiring (build-time)
+
+<!-- MOCK_NPM: replace npmjs URLs before publish -->
+
+### Workflows
+
+| Workflow | What you do | Install |
+|----------|-------------|---------|
+| **A — compile-wired `effect`** | Allowlisted `dom.*` assignments inside `effect`; build runs `compile` | `@mainframework/signals` + `@mainframework/dom-compiler` + **one** bundler plugin below |
+| **B — `backing` only** | `DomBacking` on `domSignal` / `useDomSignal` | `@mainframework/signals` only |
+| **C — mixed** | Avoid same signal in `backing` and compile-wired `effect` on one DOM | A + B packages as needed; still only **one** compile plugin |
+
+### Workflow A quick start
+
+```bash
+pnpm add @mainframework/signals @mainframework/dom-compiler @mainframework/dom-compiler-unplugin
+```
+
+Pick the plugin row for your bundler in the table below (not unplugin if you use Parcel, Metro, or Turbopack). Full configs: [@mainframework/dom-compiler](https://www.npmjs.com/package/@mainframework/dom-compiler) and each plugin’s npm package page.
+
+### DOM packages
+
+| Package | Role | npm |
+|---------|------|-----|
+| `@mainframework/signals` | Runtime signals + DOM | https://www.npmjs.com/package/@mainframework/signals |
+| `@mainframework/dom-compiler` | `compile(code, options?)` | https://www.npmjs.com/package/@mainframework/dom-compiler |
+| `@mainframework/dom-compiler-unplugin` | Vite, Rollup, Webpack, esbuild, Bun, Rspack, Rsbuild, Rolldown, Farm | https://www.npmjs.com/package/@mainframework/dom-compiler-unplugin |
+| `@mainframework/parcel-transformer-dom-compiler` | Parcel 2 | https://www.npmjs.com/package/@mainframework/parcel-transformer-dom-compiler |
+| `@mainframework/dom-compiler-metro` | Metro | https://www.npmjs.com/package/@mainframework/dom-compiler-metro |
+| `@mainframework/dom-compiler-turbopack` | Next.js Turbopack (`/loader`) | https://www.npmjs.com/package/@mainframework/dom-compiler-turbopack |
+
+### Cross-bundler rules
+
+- Register dom compile **once** per app (no Babel dom-compile duplicate on the same files).
+- **Vite / Rollup / Rspack / …:** unplugin uses **`enforce: 'pre'`** — see [@mainframework/dom-compiler-unplugin](https://www.npmjs.com/package/@mainframework/dom-compiler-unplugin).
+- **Webpack:** **either** `domCompiler.webpack()` **or** `@mainframework/dom-compiler-unplugin/webpack-loader` **last** in `rule.use` (runs first on the file), not both.
+
+### Workflow A end-to-end (sketch)
+
+```tsx
+"use client";
+
+import { effect, createSignal } from "@mainframework/signals";
+import { useDomSignal } from "@mainframework/signals/dom/react";
+import { useRef } from "react";
+
+export const Page = () => {
+  const ref = useRef<HTMLHeadingElement>(null);
+  const dom = useDomSignal(ref, { cacheId: "page-title" });
+  const count = createSignal("page-count", 0);
+
+  if (!dom || !count) return null;
+
+  effect(() => {
+    dom.textContent = String(count());
+  });
+
+  return <h1 ref={ref} />;
+};
+```
+
+With a bundler plugin enabled, `dom.textContent = …` inside `effect` is rewritten at build time. Before/after output: [@mainframework/dom-compiler](https://www.npmjs.com/package/@mainframework/dom-compiler).
+
+### Troubleshooting
+
+See plugin READMEs (ordering, double registration, silent no-op). Compiler semantics: [@mainframework/dom-compiler](https://www.npmjs.com/package/@mainframework/dom-compiler).
 
 ## Concepts
 
@@ -337,7 +402,7 @@ Instance methods:
 
 ### `DomBacking` and workflows
 
-**Workflow A — accessors:** Use the **`DomSignal`** proxy (and optional in-repo **`transform`** inside **`effect`**). The published package does not run **`transform`** for you.
+**Workflow A — accessors:** Use the **`DomSignal`** proxy (and optional **`compile`** via `@mainframework/dom-compiler` inside **`effect`**). Wire a bundler plugin so compile runs in the build.
 
 **Workflow B — backing only:** Pass **`backing`** so props are applied at runtime (one-shot object or mapped signals/resources). No compile step required.
 
@@ -383,7 +448,7 @@ At runtime, DOM updates go through the **`DomSignal`** proxy unless compile-wire
 - **Proxy + `notifyOnWrite: true`** — Compare before/after; may **`markDomDirty`** for a React re-render.
 - **Compile-wired** — Direct DOM writes plus **`markDomDirty`** from generated **`finally`**; does not double-fire **`notifyOnWrite`**.
 
-**`transform`** in `packages/dom-compiler` (**private**, not on npm): **`transform(code, options?) → { code, map? }`**. Rewrites allowlisted assignments inside an inline **`effect`** callback when **`effect`** is imported from **`@mainframework/signals`** (default **`effectImportSources`**). Infers **`const dom = domSignal(...)`** / **`useDomSignal`** bindings; optional **`bindings`** allowlist. Evaluates the full RHS before **`dom.element`**, writes when the node exists, and calls **`markDomDirty`** from **`finally`** only when that binding wrote. Default import: **`@mainframework/signals/dom/internal`**. Optional **`filename`** for scope and a source map.
+**`compile`** in `@mainframework/dom-compiler`: **`compile(code, options?) → { code, map? }`**. Rewrites allowlisted assignments inside an inline **`effect`** callback when **`effect`** is imported from **`@mainframework/signals`** (default **`effectImportSources`**). Infers **`const dom = domSignal(...)`** / **`useDomSignal`** bindings; optional **`bindings`** allowlist. Evaluates the full RHS before **`dom.element`**, writes when the node exists, and calls **`markDomDirty`** from **`finally`** only when that binding wrote. Default import: **`@mainframework/signals/dom/internal`**. Optional **`filename`** for scope and a source map.
 
 React re-render bumps are per **proxy instance** and per registered callback, not a shared route string.
 
