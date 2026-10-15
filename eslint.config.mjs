@@ -40,7 +40,7 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: ["./tsconfig.eslint.json"],
+        project: ["./tsconfig.eslint.json", "./packages/dom-compiler/tsconfig.json"],
         tsconfigRootDir: import.meta.dirname,
         ecmaVersion: "latest",
         sourceType: "module",

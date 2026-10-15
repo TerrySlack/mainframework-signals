@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["src", "vitest.config.ts"],
+  "include": ["src", "vitest.config.ts", "packages/dom-compiler"],
   "exclude": ["dist", "node_modules"],
   "compilerOptions": { "noEmit": true }
 }
